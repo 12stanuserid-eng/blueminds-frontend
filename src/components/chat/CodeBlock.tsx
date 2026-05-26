@@ -1,65 +1,46 @@
 import { useState } from 'react';
-import { Copy, Check, Play, Terminal } from 'lucide-react';
-import { toast } from 'sonner';
-import api from '../../services/api';
+import { cn } from '../../utils/cn';
 
-interface Props { code: string; language?: string; }
+interface CodeBlockProps { code: string; language: string; }
 
-export default function CodeBlock({ code, language = 'text' }: Props) {
+const LANG_COLORS: Record<string, string> = {
+  javascript: '#f7df1e', typescript: '#3178c6', python: '#3572A5', bash: '#89e051',
+  shell: '#89e051', json: '#cb4b16', css: '#563d7c', html: '#e44b23', sql: '#e38c00',
+  go: '#00add8', rust: '#dea584', java: '#b07219', cpp: '#f34b7d'
+};
+
+export default function CodeBlock({ code, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
-  const [running, setRunning] = useState(false);
-  const [output, setOutput] = useState<string | null>(null);
 
   const copy = async () => {
     await navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success('Copied!');
   };
 
-  const run = async () => {
-    const runnable = ['javascript', 'js', 'typescript', 'ts', 'python', 'py', 'bash', 'sh'];
-    if (!runnable.includes(language.toLowerCase())) { toast.error(`Cannot run ${language} directly`); return; }
-    setRunning(true); setOutput(null);
-    try {
-      const langMap: Record<string, string> = { js: 'javascript', ts: 'typescript', py: 'python', sh: 'bash' };
-      const lang = langMap[language] || language;
-      const res = await api.post('/api/execute/code', { language: lang, code });
-      setOutput(res.data.output || res.data.error || 'No output');
-    } catch (err: any) {
-      setOutput(`Error: ${err.message}`);
-    } finally { setRunning(false); }
-  };
+  const color = LANG_COLORS[language.toLowerCase()] || '#888';
 
   return (
-    <div className="my-3 rounded-xl overflow-hidden border border-surface-700 bg-surface-950">
-      <div className="flex items-center justify-between px-4 py-2 bg-surface-800/80 border-b border-surface-700">
-        <span className="text-xs text-surface-400 font-mono font-medium">{language}</span>
-        <div className="flex items-center gap-1">
-          {['javascript', 'js', 'typescript', 'ts', 'python', 'py', 'bash', 'sh'].includes(language.toLowerCase()) && (
-            <button onClick={run} disabled={running} className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-md transition-colors disabled:opacity-50">
-              {running ? <div className="w-3 h-3 border border-green-400 border-t-transparent rounded-full animate-spin" /> : <Play size={11} />}
-              Run
-            </button>
+    <div className="rounded-xl overflow-hidden border border-white/[0.08] my-2">
+      {/* Header */}
+      <div className="flex items-center justify-between bg-white/[0.04] px-4 py-2.5 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+          <span className="text-[11px] font-mono text-white/40 font-medium">{language}</span>
+        </div>
+        <button onClick={copy}
+          className="flex items-center gap-1.5 text-[11px] text-white/35 hover:text-white/65 transition-colors py-0.5 px-2 rounded-md hover:bg-white/[0.05]">
+          {copied ? (
+            <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg><span className="text-green-400">Copied!</span></>
+          ) : (
+            <><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg><span>Copy</span></>
           )}
-          <button onClick={copy} className="flex items-center gap-1.5 px-2.5 py-1 text-xs bg-surface-700 hover:bg-surface-600 text-surface-300 rounded-md transition-colors">
-            {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
-            {copied ? 'Copied' : 'Copy'}
-          </button>
-        </div>
+        </button>
       </div>
-      <pre className="!m-0 !rounded-none overflow-x-auto p-4 text-sm leading-relaxed text-surface-100 bg-surface-950">
-        <code className="font-mono">{code}</code>
-      </pre>
-      {output !== null && (
-        <div className="border-t border-surface-700 bg-surface-900 p-3">
-          <div className="flex items-center gap-2 mb-2">
-            <Terminal size={12} className="text-surface-400" />
-            <span className="text-xs text-surface-400 font-medium">Output</span>
-          </div>
-          <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-48 overflow-y-auto">{output}</pre>
-        </div>
-      )}
+      {/* Code */}
+      <div className="bg-[#080812] overflow-x-auto">
+        <pre className="px-4 py-4 text-[12.5px] font-mono leading-[1.7] text-white/80 whitespace-pre">{code}</pre>
+      </div>
     </div>
   );
 }
