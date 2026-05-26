@@ -1,162 +1,131 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChatStore } from '../../stores/chatStore';
-import { Send, Square, Paperclip, Mic, AtSign, Command } from 'lucide-react';
-import { cn } from '../../utils/cn';
 import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '../../utils/cn';
 
-const COMMANDS = [
-  { cmd: '/plan', desc: 'Create execution plan' },
-  { cmd: '/terminal', desc: 'Run terminal command' },
-  { cmd: '/code', desc: 'Generate code' },
-  { cmd: '/debug', desc: 'Debug last error' },
-  { cmd: '/learn', desc: 'Educational mode' },
-  { cmd: '/deploy', desc: 'Deploy current project' },
-  { cmd: '/github', desc: 'GitHub operations' },
-  { cmd: '/render', desc: 'Render operations' }
-];
-
-const MENTIONS = [
-  { name: '@github', desc: 'GitHub integration' },
-  { name: '@render', desc: 'Render deployment' },
-  { name: '@terminal', desc: 'Terminal commands' },
-  { name: '@planner', desc: 'Task planning' }
+const SLASH_COMMANDS = [
+  { cmd: '/plan', desc: 'Create execution plan', icon: '📋' },
+  { cmd: '/terminal', desc: 'Run terminal command', icon: '💻' },
+  { cmd: '/debug', desc: 'Debug errors', icon: '🐛' },
+  { cmd: '/deploy', desc: 'Deploy to Render', icon: '🚀' },
+  { cmd: '/github', desc: 'GitHub operations', icon: '🐙' },
+  { cmd: '/learn', desc: 'Educational mode', icon: '📚' },
 ];
 
 export default function ChatInput() {
-  const { sendMessage, isStreaming, stopStreaming } = useChatStore();
+  const { sendMessage, isStreaming, stopStreaming, selectedModel } = useChatStore();
   const [value, setValue] = useState('');
-  const [showCommands, setShowCommands] = useState(false);
-  const [showMentions, setShowMentions] = useState(false);
-  const [filterStr, setFilterStr] = useState('');
+  const [showCmds, setShowCmds] = useState(false);
+  const [cmdFilter, setCmdFilter] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 180) + 'px';
     }
   }, [value]);
 
   const handleChange = (v: string) => {
     setValue(v);
-    const lastWord = v.split(' ').pop() || '';
-    if (lastWord.startsWith('/')) { setShowCommands(true); setShowMentions(false); setFilterStr(lastWord.slice(1)); }
-    else if (lastWord.startsWith('@')) { setShowMentions(true); setShowCommands(false); setFilterStr(lastWord.slice(1)); }
-    else { setShowCommands(false); setShowMentions(false); }
+    const last = v.split('\n').pop()?.split(' ').pop() || '';
+    if (last.startsWith('/')) { setShowCmds(true); setCmdFilter(last.slice(1)); }
+    else setShowCmds(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-    if (e.key === 'Escape') { setShowCommands(false); setShowMentions(false); }
+    if (e.key === 'Escape') setShowCmds(false);
   };
 
   const handleSend = async () => {
     const msg = value.trim();
     if (!msg || isStreaming) return;
     setValue('');
-    setShowCommands(false);
-    setShowMentions(false);
-
+    setShowCmds(false);
     let mode = 'base';
     if (msg.startsWith('/plan')) mode = 'plan';
     else if (msg.startsWith('/debug')) mode = 'debug';
     else if (msg.startsWith('/learn')) mode = 'learn';
-
     await sendMessage(msg, mode);
   };
 
-  const insertSuggestion = (text: string) => {
-    const words = value.split(' ');
-    words[words.length - 1] = text;
-    setValue(words.join(' ') + ' ');
-    setShowCommands(false);
-    setShowMentions(false);
+  const insertCmd = (cmd: string) => {
+    const lines = value.split('\n');
+    const words = lines[lines.length - 1].split(' ');
+    words[words.length - 1] = cmd;
+    lines[lines.length - 1] = words.join(' ');
+    setValue(lines.join('\n') + ' ');
+    setShowCmds(false);
     textareaRef.current?.focus();
   };
 
-  const filteredCommands = COMMANDS.filter(c => c.cmd.slice(1).startsWith(filterStr.toLowerCase()));
-  const filteredMentions = MENTIONS.filter(m => m.name.slice(1).startsWith(filterStr.toLowerCase()));
+  const filtered = SLASH_COMMANDS.filter(c => c.cmd.slice(1).startsWith(cmdFilter.toLowerCase()));
+  const canSend = value.trim() && !isStreaming;
 
   return (
-    <div className="relative max-w-4xl mx-auto w-full">
-      {/* Command/mention popup */}
+    <div className="relative w-full max-w-3xl mx-auto">
+      {/* Command popup */}
       <AnimatePresence>
-        {(showCommands && filteredCommands.length > 0) && (
-          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-            className="absolute bottom-full mb-2 left-0 right-0 bg-surface-800 border border-surface-700 rounded-xl overflow-hidden shadow-2xl z-50">
-            <div className="px-3 py-1.5 border-b border-surface-700 flex items-center gap-2">
-              <Command size={12} className="text-surface-400" />
-              <span className="text-xs text-surface-400 font-medium">Commands</span>
+        {showCmds && filtered.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.12 }}
+            className="absolute bottom-full mb-2 left-0 right-0 bg-[#16161f] border border-white/[0.08] rounded-xl overflow-hidden shadow-2xl z-50">
+            <div className="px-3 py-2 border-b border-white/[0.05]">
+              <p className="text-[11px] text-white/30 font-medium">Commands</p>
             </div>
-            {filteredCommands.map(c => (
-              <button key={c.cmd} onClick={() => insertSuggestion(c.cmd)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-700 text-left transition-colors">
-                <code className="text-brand text-sm font-mono">{c.cmd}</code>
-                <span className="text-surface-400 text-xs">{c.desc}</span>
-              </button>
-            ))}
-          </motion.div>
-        )}
-        {(showMentions && filteredMentions.length > 0) && (
-          <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 4 }}
-            className="absolute bottom-full mb-2 left-0 right-0 bg-surface-800 border border-surface-700 rounded-xl overflow-hidden shadow-2xl z-50">
-            <div className="px-3 py-1.5 border-b border-surface-700 flex items-center gap-2">
-              <AtSign size={12} className="text-surface-400" />
-              <span className="text-xs text-surface-400 font-medium">Mentions</span>
-            </div>
-            {filteredMentions.map(m => (
-              <button key={m.name} onClick={() => insertSuggestion(m.name)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-700 text-left transition-colors">
-                <code className="text-purple-400 text-sm font-mono">{m.name}</code>
-                <span className="text-surface-400 text-xs">{m.desc}</span>
+            {filtered.map(c => (
+              <button key={c.cmd} onClick={() => insertCmd(c.cmd)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.05] transition-colors text-left">
+                <span className="text-base">{c.icon}</span>
+                <code className="text-blue-400 text-[13px] font-mono">{c.cmd}</code>
+                <span className="text-white/30 text-[12px]">{c.desc}</span>
               </button>
             ))}
           </motion.div>
         )}
       </AnimatePresence>
 
-      <div className="bg-surface-800 border border-surface-700 rounded-2xl overflow-hidden focus-within:border-brand/50 transition-colors shadow-lg">
+      {/* Input box */}
+      <div className="bg-white/[0.04] border border-white/[0.08] hover:border-white/[0.12] focus-within:border-blue-500/40 rounded-2xl transition-all overflow-hidden shadow-lg">
         <textarea
           ref={textareaRef}
           value={value}
           onChange={e => handleChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Message BlueMinds AI... (/ for commands, @ for tools)"
+          placeholder={isStreaming ? 'AI is responding...' : 'Ask anything... (/ for commands, Shift+Enter for newline)'}
           rows={1}
-          className="w-full bg-transparent px-4 pt-3.5 pb-2 text-sm text-white placeholder-surface-500 resize-none focus:outline-none leading-relaxed"
-          style={{ maxHeight: '200px' }}
-          disabled={isStreaming}
+          disabled={false}
+          className="w-full bg-transparent px-4 pt-4 pb-2 text-[14px] text-white/85 placeholder-white/20 resize-none focus:outline-none leading-relaxed"
+          style={{ maxHeight: '180px' }}
         />
-        <div className="flex items-center justify-between px-3 pb-2.5 pt-1">
+        <div className="flex items-center justify-between px-3 pb-3">
           <div className="flex items-center gap-1">
-            <button className="btn-ghost !p-1.5 text-surface-500 hover:text-surface-300" title="Attach file">
-              <Paperclip size={15} />
-            </button>
-            <button className="btn-ghost !p-1.5 text-surface-500 hover:text-surface-300" title="Voice">
-              <Mic size={15} />
-            </button>
-            <button onClick={() => handleChange(value + '/')} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-surface-500 hover:text-surface-300 hover:bg-surface-700 transition-colors">
-              <Command size={11} /> <span>Commands</span>
+            <button onClick={() => { setValue(v => v + '/'); textareaRef.current?.focus(); }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-white/25 hover:text-white/50 hover:bg-white/[0.05] text-[12px] transition-colors">
+              <span className="font-mono font-bold text-[11px]">/</span>
+              <span>Commands</span>
             </button>
           </div>
           <div className="flex items-center gap-2">
             {isStreaming && (
-              <button onClick={stopStreaming} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-xs font-medium transition-colors">
-                <Square size={11} fill="currentColor" /> Stop
+              <button onClick={stopStreaming}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-red-500/15 text-white/50 hover:text-red-400 text-[12px] font-medium transition-colors">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                Stop
               </button>
             )}
-            <button
-              onClick={handleSend}
-              disabled={!value.trim() || isStreaming}
-              className={cn('flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all', value.trim() && !isStreaming ? 'bg-brand hover:bg-brand-dark text-white shadow-lg shadow-brand/20' : 'bg-surface-700 text-surface-500 cursor-not-allowed')}
-            >
-              <Send size={14} />
-              <span className="hidden sm:block">Send</span>
+            <button onClick={handleSend} disabled={!canSend}
+              className={cn('w-8 h-8 rounded-xl flex items-center justify-center transition-all',
+                canSend ? 'bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-500/20' : 'bg-white/[0.06] cursor-not-allowed')}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={canSend ? 'white' : 'rgba(255,255,255,0.25)'} strokeWidth="2.5">
+                <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+              </svg>
             </button>
           </div>
         </div>
       </div>
-      <p className="text-center text-surface-600 text-xs mt-2">BlueMinds AI can make mistakes. Verify important decisions.</p>
+      <p className="text-center text-white/15 text-[11px] mt-2">BlueMinds AI may make mistakes. Verify important outputs.</p>
     </div>
   );
 }
