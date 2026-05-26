@@ -1,75 +1,55 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { supabase, signInWithGoogle, signOut } from '../services/supabase';
-import api from '../services/api';
+import { supabase } from '../services/supabase';
 
-interface User {
-  id: string;
-  email: string;
-  name?: string;
-  avatar?: string;
-  role: string;
-}
+interface User { id: string; email: string; name: string; avatar?: string; }
 
-interface AuthState {
+interface AuthStore {
   user: User | null;
-  token: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
-  loginWithGoogle: () => Promise<void>;
-  logout: () => Promise<void>;
-  syncUser: (session: any) => Promise<void>;
-  setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
+  loading: boolean;
+  initialize: () => void;
+  signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
-      user: null,
-      token: null,
-      isLoading: false,
-      isAuthenticated: false,
+export const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  loading: true,
 
-      loginWithGoogle: async () => {
-        set({ isLoading: true });
-        try {
-          await signInWithGoogle();
-        } catch (err) {
-          set({ isLoading: false });
-          throw err;
-        }
-      },
-
-      syncUser: async (session) => {
-        if (!session?.access_token) return;
-        try {
-          const res = await api.post('/api/auth/google', {
-            access_token: session.access_token,
-            user: session.user
-          });
-          const { user, token } = res.data;
-          localStorage.setItem('bm_token', token);
-          set({ user, token, isAuthenticated: true, isLoading: false });
-        } catch (err) {
-          console.error('Sync error:', err);
-          set({ isLoading: false });
-        }
-      },
-
-      logout: async () => {
-        await signOut();
-        localStorage.removeItem('bm_token');
-        set({ user: null, token: null, isAuthenticated: false });
-      },
-
-      setUser: (user) => set({ user, isAuthenticated: !!user }),
-      setToken: (token) => {
-        if (token) localStorage.setItem('bm_token', token);
-        else localStorage.removeItem('bm_token');
-        set({ token });
+  initialize: () => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        set({
+          user: {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            avatar: session.user.user_metadata?.avatar_url
+          },
+          loading: false
+        });
+      } else {
+        set({ user: null, loading: false });
       }
-    }),
-    { name: 'bm-auth', partialize: (s) => ({ user: s.user, token: s.token, isAuthenticated: s.isAuthenticated }) }
-  )
-);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        set({
+          user: {
+            id: session.user.id,
+            email: session.user.email || '',
+            name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
+            avatar: session.user.user_metadata?.avatar_url
+          },
+          loading: false
+        });
+      } else {
+        set({ user: null, loading: false });
+      }
+    });
+  },
+
+  signOut: async () => {
+    await supabase.auth.signOut();
+    set({ user: null });
+  }
+}));
