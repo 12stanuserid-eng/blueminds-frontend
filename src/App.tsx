@@ -1,46 +1,37 @@
 import { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
-import { supabase } from './services/supabase';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import LoginPage from './pages/LoginPage';
-import ChatPage from './pages/ChatPage';
 import AuthCallback from './pages/AuthCallback';
-
-const queryClient = new QueryClient();
+import ChatPage from './pages/ChatPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
-  if (isLoading) return <div className="flex items-center justify-center h-screen bg-surface-950"><div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin"/></div>;
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
+  const { user, loading } = useAuthStore();
+  if (loading) return (
+    <div className="min-h-screen bg-[#0d0d14] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20 animate-pulse">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <p className="text-white/30 text-[13px]">Loading BlueMinds AI...</p>
+      </div>
+    </div>
+  );
+  return user ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 export default function App() {
-  const { syncUser } = useAuthStore();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) syncUser(session);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) syncUser(session);
-    });
-    return () => subscription.unsubscribe();
-  }, [syncUser]);
+  const { initialize } = useAuthStore();
+  useEffect(() => { initialize(); }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-      <Toaster position="bottom-right" theme="dark" richColors />
-    </QueryClientProvider>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallback />} />
+      <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
