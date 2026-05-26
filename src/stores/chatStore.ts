@@ -59,7 +59,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     abortController = new AbortController();
     try {
       const token = await apiService.getToken();
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/chat/completion`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ message: content, threadId: activeThread, model: selectedModel, stream: true, mode }),
