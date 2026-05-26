@@ -4,43 +4,59 @@ import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import { motion } from 'framer-motion';
 
+const SUGGESTIONS = [
+  { icon: '⚡', text: 'Build a REST API with Express and PostgreSQL' },
+  { icon: '🚀', text: 'Deploy a Docker container to Render' },
+  { icon: '🐙', text: 'Create a GitHub repo and push code automatically' },
+  { icon: '🧠', text: 'Explain how async/await works in JavaScript' },
+  { icon: '🛠️', text: 'Debug my Node.js application crash' },
+  { icon: '📊', text: 'Create a data visualization dashboard' },
+];
+
 export default function ChatInterface() {
-  const { currentThread, messages } = useChatStore();
+  const { messages, activeThread, isStreaming } = useChatStore();
+  const { sendMessage } = useChatStore();
+
+  const hasMessages = messages.length > 0;
 
   return (
     <div className="flex flex-col h-full">
-      {!currentThread && messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center max-w-lg">
-            <div className="w-16 h-16 bg-brand/20 border border-brand/30 rounded-2xl flex items-center justify-center mx-auto mb-6">
-              <svg viewBox="0 0 32 32" fill="none" className="w-9 h-9">
-                <path d="M7 16C7 11.029 11.029 7 16 7s9 4.029 9 9-4.029 9-9 9-9-4.029-9-9z" fill="#2563EB" fillOpacity="0.3"/>
-                <path d="M11 13.5h10M11 16.5h10M11 19.5h7" stroke="#2563EB" strokeWidth="1.5" strokeLinecap="round"/>
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-white mb-3">BlueMinds AI Agent</h2>
-            <p className="text-surface-400 mb-8 leading-relaxed">Your autonomous AI that codes, deploys, and manages projects. Ask anything or use commands to get started.</p>
-            <div className="grid grid-cols-2 gap-3 text-left">
-              {[
-                { cmd: '/plan', desc: 'Create execution plan for complex tasks' },
-                { cmd: '/github create-repo my-app', desc: 'Create a GitHub repository' },
-                { cmd: '/deploy', desc: 'Deploy current project to Render' },
-                { cmd: '/debug', desc: 'Analyze and fix the last error' }
-              ].map(s => (
-                <div key={s.cmd} className="bg-surface-900 border border-surface-800 rounded-xl p-3 hover:border-brand/40 transition-colors cursor-pointer group">
-                  <code className="text-brand text-xs font-mono group-hover:text-brand-light transition-colors">{s.cmd}</code>
-                  <p className="text-surface-400 text-xs mt-1 leading-tight">{s.desc}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto">
+      {hasMessages ? (
+        <div className="flex-1 overflow-hidden">
           <MessageList />
         </div>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-8">
+          {/* Welcome */}
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+            className="text-center mb-10">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-blue-700/20 border border-blue-500/20 flex items-center justify-center">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <h2 className="text-2xl font-semibold text-white mb-2">What can I help you with?</h2>
+            <p className="text-[14px] text-white/35 max-w-sm">Code, deploy, automate — your AI workspace</p>
+          </motion.div>
+
+          {/* Suggestions */}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.15 }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-2xl mb-10">
+            {SUGGESTIONS.map((s, i) => (
+              <motion.button key={i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 + i * 0.04 }}
+                onClick={() => sendMessage(s.text, 'base')}
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.10] text-left transition-all group">
+                <span className="text-lg flex-shrink-0">{s.icon}</span>
+                <span className="text-[13px] text-white/55 group-hover:text-white/75 transition-colors leading-relaxed">{s.text}</span>
+              </motion.button>
+            ))}
+          </motion.div>
+        </div>
       )}
-      <div className="flex-shrink-0 border-t border-surface-800 p-4">
+
+      {/* Input */}
+      <div className="flex-shrink-0 px-4 pb-4 pt-2">
         <ChatInput />
       </div>
     </div>
