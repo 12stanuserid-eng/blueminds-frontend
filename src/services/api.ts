@@ -1,29 +1,40 @@
-import axios from 'axios';
+import { supabase } from './supabase';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const BASE = import.meta.env.VITE_API_BASE_URL || '';
 
-const api = axios.create({
-  baseURL: API_BASE,
-  timeout: 60000,
-  headers: { 'Content-Type': 'application/json' }
-});
+export const apiService = {
+  async getToken(): Promise<string> {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || '';
+  },
 
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('bm_token');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+  async get(path: string) {
+    const token = await this.getToken();
+    const res = await fetch(`${BASE}${path}`, {
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+    return res.json();
+  },
 
-api.interceptors.response.use(
-  r => r,
-  async err => {
-    if (err.response?.status === 401) {
-      localStorage.removeItem('bm_token');
-      window.location.href = '/login';
-    }
-    return Promise.reject(err);
+  async post(path: string, body: unknown) {
+    const token = await this.getToken();
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`POST ${path} failed: ${res.status}`);
+    return res.json();
+  },
+
+  async delete(path: string) {
+    const token = await this.getToken();
+    const res = await fetch(`${BASE}${path}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error(`DELETE ${path} failed: ${res.status}`);
+    return res.status === 204 ? null : res.json();
   }
-);
-
-export default api;
-export { API_BASE };
+};
