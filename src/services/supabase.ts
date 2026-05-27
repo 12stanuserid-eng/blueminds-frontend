@@ -6,7 +6,12 @@ import { createClient } from '@supabase/supabase-js';
   export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
   export async function signUpWithEmail(email: string, password: string) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const redirectTo = `${window.location.origin}/auth/callback`;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: redirectTo },
+    });
     if (error) throw error;
     return data;
   }
