@@ -2,7 +2,6 @@ import { useEffect } from 'react';
   import { Routes, Route, Navigate } from 'react-router-dom';
   import { useAuthStore } from './stores/authStore';
   import LoginPage from './pages/LoginPage';
-  import AuthCallback from './pages/AuthCallback';
   import ChatPage from './pages/ChatPage';
 
   function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -29,7 +28,6 @@ import { useEffect } from 'react';
     return (
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/" element={<ProtectedRoute><ChatPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
